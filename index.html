@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .mesa {
+            width: 100%;
+            height: 100vh;
+            background: #076324;
+            position: relative;
+        }
+        
+        #monte {
+            width: 120px;
+            height: 180px;
+            background: #fff;
+            border: 2px solid #000;
+            border-radius: 10px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            cursor: grab;
+        }
+        
+        #lixo {
+            width: 120px;
+            height: 180px;
+            border: 2px dashed #fff;
+            border-radius: 10px;
+            position: absolute;
+            top: 50%;
+            left: calc(50% + 140px);
+            transform: translate(-50%, -50%);
+        }
+        
+        .carta {
+            width: 120px;
+            height: 180px;
+            background: #fff;
+            border: 2px solid #000;
+            border-radius: 10px;
+            position: absolute;
+            cursor: grab;
+            user-select: none;
+        }
+        
+        .carta.ativa {
+            cursor: grabbing;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="mesa">
+        <div id="monte"></div>
+        <div id="lixo"></div>
+    </div>
+
+    <script>
+        const naipes = ['♠️', '♦️', '♥️', '♣️'];
+        const valores = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+        let baralho = [];
+        let cartasNoLixo = [];
+
+        // Criar baralho
+        function criarBaralho() {
+            baralho = [];
+            for (let naipe of naipes) {
+                for (let valor of valores) {
+                    baralho.push({ naipe, valor });
+                }
+            }
+            embaralhar(baralho);
+        }
+
+        // Embaralhar
+        function embaralhar(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // Criar carta visual
+        function criarCartaVisual(carta) {
+            const elementoCarta = document.createElement('div');
+            elementoCarta.className = 'carta';
+            elementoCarta.textContent = `${carta.valor}${carta.naipe}`;
+            elementoCarta.style.color = (carta.naipe === '♦️' || carta.naipe === '♥️') ? 'red' : 'black';
+            
+            // Eventos de arrastar
+            elementoCarta.addEventListener('mousedown', iniciarArrasto);
+            return elementoCarta;
+        }
+
+        // Arrastar carta
+        function iniciarArrasto(e) {
+            const carta = e.target;
+            carta.classList.add('ativa');
+            
+            const initialX = e.clientX - carta.offsetLeft;
+            const initialY = e.clientY - carta.offsetTop;
+
+            function moverCarta(e) {
+                carta.style.left = `${e.clientX - initialX}px`;
+                carta.style.top = `${e.clientY - initialY}px`;
+            }
+
+            function pararArrasto() {
+                carta.classList.remove('ativa');
+                document.removeEventListener('mousemove', moverCarta);
+                document.removeEventListener('mouseup', pararArrasto);
+
+                // Verificar se a carta está sobre o lixo
+                const lixoRect = document.getElementById('lixo').getBoundingClientRect();
+                const cartaRect = carta.getBoundingClientRect();
+                
+                if (cartaRect.left < lixoRect.right &&
+                    cartaRect.right > lixoRect.left &&
+                    cartaRect.top < lixoRect.bottom &&
+                    cartaRect.bottom > lixoRect.top) {
+                    cartasNoLixo.push(carta);
+                }
+            }
+
+            document.addEventListener('mousemove', moverCarta);
+            document.addEventListener('mouseup', pararArrasto);
+        }
+
+        // Comprar carta
+        document.getElementById('monte').addEventListener('mousedown', () => {
+            if (baralho.length === 0) {
+                // Reembaralhar cartas do lixo
+                cartasNoLixo.forEach(carta => {
+                    baralho.push({
+                        naipe: carta.textContent.slice(-2),
+                        valor: carta.textContent.slice(0, -2)
+                    });
+                    carta.remove();
+                });
+                cartasNoLixo = [];
+                embaralhar(baralho);
+            }
+
+            if (baralho.length > 0) {
+                const carta = baralho.pop();
+                const cartaVisual = criarCartaVisual(carta);
+                document.body.appendChild(cartaVisual);
+                cartaVisual.style.left = '50%';
+                cartaVisual.style.top = '50%';
+            }
+        });
+
+        // Inicializar jogo
+        criarBaralho();
+    </script>
+</body>
+</html>
